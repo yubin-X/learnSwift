@@ -2,7 +2,7 @@
 //  main.swift
 //  Clousures
 //
-//  Created by Caad on 2017/1/17.
+//  Created by Yubin on 2017/1/17.
 //  Copyright © 2017年 X. All rights reserved.
 //
 
@@ -30,7 +30,7 @@ print("2:\(names2)")
 /*---------------------------------------------------------------------------------
  | { (parameters) -> returnType in
  |
- |    #statements#
+ |    <#statements#>
  | }
  --------------------------------------------------------------------------------*/
 
@@ -243,6 +243,7 @@ serve(customer: { customersInLine.remove(at: 0) } )
  | 1: 下面这个版本的 <#serve(customer:#>) 完成了相同的操作，不过它并没有接受一个显式的闭包，而是通过将参数标记为 @autoclosure 来接收一个自动闭包。
  | 2: 现在你可以将该函数当作接受 String 类型参数（而非闭包）的函数来调用。
  | 3: customerProvider 参数将自动转化为一个闭包，因为该参数被标记了 @autoclosure 特性。
+ | NB: 过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟执行的。
  ---------------------------------------------------------------------------------*/
 // customersInLine is ["Ewa", "Barry", "Daniella"]
 func serve(customer customerProvider: @autoclosure ()->String)
@@ -252,10 +253,30 @@ func serve(customer customerProvider: @autoclosure ()->String)
 serve(customer: customersInLine.remove(at: 0))
 // 打印出"Now serving Ewa"
 
+// MARK:- 七:逃逸自动闭包
+/*---------------------------------------------------------------------------------
+ | 1: 如果你想让一个自动闭包可以“逃逸”，则应该同时使用 @autoclosure 和 @escaping 属性。
+ | 2: 在下面的代码中，collectCustomerProviders(_:) 函数并没有调用传入的 customerProvider 闭包，而是将闭包追加到了 customerProviders 数组中。
+ | 3: 这个数组定义在函数作用域范围外，这意味着数组内的闭包能够在函数返回之后被调用
+ | 4: 因此，customerProvider 参数必须允许“逃逸”出函数作用域。
+ ---------------------------------------------------------------------------------*/
+// customersInLine i= ["Barry", "Daniella"]
+var customerProviders:[()->String] = []
+func collectCustomerProviders(_ customerProvider:@autoclosure @escaping ()->String)
+{
+    customerProviders.append(customerProvider)
+}
+collectCustomerProviders(customersInLine.remove(at: 0))
+collectCustomerProviders(customersInLine.remove(at: 0))
 
-
-
-
+print("Collect \(customerProviders.count) closures.");
+// 打印"Collect 2 closures."
+for customerProvider in customerProviders
+{
+    print("Now serving \(customerProvider())!")
+}
+// 打印 "Now serving Barry!"
+// 打印 "Now serving Daniella!"
 
 
 
