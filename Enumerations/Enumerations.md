@@ -5,6 +5,7 @@
 * [关联值](#关联值)  
 * [原始值](#原始值)    
  *	[原始值的隐式赋值](#原始值的隐式赋值)  
+ * [使用原始值初始化枚举实例](#使用原始值初始化枚举实例)
 * [递归枚举](#递归枚举)  
 
 * 枚举为一组相关的值定义了一个共同的类型，使你可以在你的代码中以类型安全的方式来使用这些值。
@@ -94,16 +95,197 @@ case .west:
 这便于库存跟踪系统用包含四个整型值的元组存储 UPC 码，以及用任意长度的字符串储存 QR 码。  
 在 Swift 中，使用如下方式定义表示两种商品条形码的枚举：
 
+```swift
+enum BarCode {
+    case upc(Int,Int,Int,Int)
+    case qrCode(String)
+}
 
+var productBarCode = BarCode.upc(8, 85909, 51226, 3)
+productBarCode = .qrCode("我是二维码的内容")
+print(productBarCode)
+
+```
+
+* 关联值可以被提取出来作为 switch 语句的一部分。
+* 你可以在switch的 case 分支代码中提取每个关联值作为一个常量（用let前缀）或者作为一个变量（用var前缀）来使用：
+
+
+```swift
+switch productBarCode
+{
+case .upc(let numberSystem,let manufacturer,let product,let check):
+    print("UPC:\(numberSystem),\(manufacturer),\(product),\(check)")
+case .qrCode(let productCode):
+    print("QR code: \(productCode)")
+}
+
+```
+
+* 如果一个枚举成员的所有关联值都被提取为常量，或者都被提取为变量，为了简洁，你可以只在成员名称前标注一个let或者var：
+
+```swift
+switch productBarCode
+{
+case let .upc(numberSystem,manufacturer,product,check):
+    print("UPC:\(numberSystem),\(manufacturer),\(product),\(check)")
+case var .qrCode(productCode):
+    print("QR code: \(productCode)")
+    productCode = "ABC"
+    print(productBarCode)
+    print(productCode)
+    productBarCode = .qrCode("另一个二维码")
+}
+```
 
 ## <span id="原始值">原始值</span>
 
+* 作为关联值的替代选择，枚举成员可以被默认值（称为原始值）预填充，这些原始值的类型必须相同。
+
+```
+enum ASCIIControlCharacter: Character {
+    case tab = "\t"
+    case lineFeed = "\n"
+    case carriageReturn = "\r"
+}
+```
+
+> 枚举类型ASCIIControlCharacter的原始值类型被定义为Character，并设置了一些比较常见的 ASCII 控制字符  
+> 原始值可以是字符串，字符，或者任意整型值或浮点型值。每个原始值在枚举声明中必须是唯一的  
+> 
+> __注意__  
+> 原始值和关联值是不同的。原始值是在定义枚举时被预先填充的值，像上述三个 ASCII 码。对于一个特定的枚举成员，它的原始值始终不变。关联值是创建一个基于枚举成员的常量或变量时才设置的值，枚举成员的关联值可以变化。
+
 ### <span id="原始值的隐式赋值">原始值的隐式赋值</span>
+
+* 在使用原始值为整数或者字符串类型的枚举时，不需要显式地为每一个枚举成员设置原始值，Swift 将会自动为你赋值。
+* 当使用整数作为原始值时，隐式赋值的值依次递增1。如果第一个枚举成员没有设置原始值，其原始值将为0。
+* 当使用字符串作为枚举类型的原始值时，每个枚举成员的隐式原始值为该枚举成员的名称。
+
+下面的枚举是对之前Planet这个枚举的一个细化，利用整型的原始值来表示每个行星在太阳系中的顺序：
+
+```swift
+enum Planet: Int {
+    case mercury = 1, venus, earth, mars, jupiter, saturn, uranus, neptune
+}
+```
+> 在上面的例子中，Plant.mercury的显式原始值为1，Planet.venus的隐式原始值为2，依次类推。
+
+
+下面的例子是CompassPoint枚举的细化，使用字符串类型的原始值来表示各个方向的名称：
+
+```swift
+enum CompassPoint: String {
+    case north, south, east, west
+}
+```
+> 上面例子中，CompassPoint.south拥有隐式原始值south，依次类推。
+
+* 使用枚举成员的rawValue属性可以访问该枚举成员的原始值：
+
+```swift
+let earthsOrder = Planet.earth.rawValue
+// earthsOrder 值为 3
+
+let sunsetDirection = CompassPoint.west.rawValue
+// sunsetDirection 值为 "west"
+```
+#### <span id="使用原始值初始化枚举实例">使用原始值初始化枚举实例</span>
+
+* 如果在定义枚举类型的时候使用了原始值，那么将会自动获得一个初始化方法，这个方法接收一个叫做rawValue的参数，参数类型即为原始值类型，返回值则是枚举成员或nil。
+* 你可以使用这个初始化方法来创建一个新的枚举实例。
+
+这个例子利用原始值7创建了枚举成员uranus：
+
+```
+let possiblePlanet = Planet(rawValue: 7)
+// possiblePlanet 类型为 Planet? 值为 Planet.uranus
+```
+
+* 然而，并非所有Int值都可以找到一个匹配的行星。
+* 因此，原始值构造器总是返回一个可选的枚举成员。
+* 在上面的例子中，possiblePlanet是Planet?类型，或者说“可选的Planet”。
+
+> __注意__  
+> 原始值构造器是一个可失败构造器，因为并不是每一个原始值都有与之对应的枚举成员。
+
+
+* 如果你试图寻找一个位置为11的行星，通过原始值构造器返回的可选`Planet`值将是`nil`：
+
+```swift
+let positionToFind = 11
+if let somePlanet = Planet(rawValue: positionToFind) {
+    switch somePlanet {
+    case .earth:
+        print("Mostly harmless")
+    default:
+        print("Not a safe place for humans")
+    }
+} else {
+    print("There isn't a planet at position \(positionToFind)")
+}
+// 输出 "There isn't a planet at position 11
+```
+
+这个例子使用了可选绑定（optional binding），试图通过原始值11来访问一个行星。`if let somePlanet = Planet(rawValue: 11)`语句创建了一个可选`Planet`，如果可选`Planet`的值存在，就会赋值给`somePlanet`。在这个例子中，无法检索到位置为11的行星，所以else分支被执行。
+
+
+
+
+
 
 ## <span id="递归枚举">递归枚举</span>
 
+* 递归枚举是一种枚举类型，它有一个或多个枚举成员使用该枚举类型的实例作为关联值。
+* 使用递归枚举时，编译器会插入一个间接层。
+* 你可以在枚举成员前加上indirect来表示该成员可递归。
 
 
+例如，下面的例子中，枚举类型存储了简单的算术表达式：
+
+```swift
+enum ArithmeticExpression {
+    case number(Int)
+    indirect case addition(ArithmeticExpression, ArithmeticExpression)
+    indirect case multiplication(ArithmeticExpression, ArithmeticExpression)
+}
+```
+
+你也可以在枚举类型开头加上indirect关键字来表明它的所有成员都是可递归的：
+
+```swift
+indirect enum ArithmeticExpression {
+    case number(Int)
+    case addition(ArithmeticExpression, ArithmeticExpression)
+    case multiplication(ArithmeticExpression, ArithmeticExpression)
+}
+```
+
+```swift
+let five = ArithmeticExpression.number(5)
+let four = ArithmeticExpression.number(4)
+let sum = ArithmeticExpression.addition(five, four)
+let product = ArithmeticExpression.multiplication(sum, ArithmeticExpression.number(2))
+```
+
+要操作具有递归性质的数据结构，使用递归函数是一种直截了当的方式。例如，下面是一个对算术表达式求值的函数：
+
+```swift
+func evaluate(_ expression: ArithmeticExpression) -> Int {
+    switch expression {
+    case let .number(value):
+        return value
+    case let .addition(left, right):
+        return evaluate(left) + evaluate(right)
+    case let .multiplication(left, right):
+        return evaluate(left) * evaluate(right)
+    }
+}
+
+print(evaluate(product))
+// 打印 "18"
+```
+该函数如果遇到纯数字，就直接返回该数字的值。如果遇到的是加法或乘法运算，则分别计算左边表达式和右边表达式的值，然后相加或相乘。
 
 
 
